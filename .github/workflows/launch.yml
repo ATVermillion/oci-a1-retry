@@ -1,0 +1,39 @@
+name: Try to create Oracle A1 VM
+
+on:
+  schedule:
+    - cron: "7,22,37,52 * * * *"   # every 15 minutes
+  workflow_dispatch:
+
+concurrency:
+  group: launch
+  cancel-in-progress: false
+
+permissions:
+  actions: write    # to switch this workflow off once the VM exists
+  contents: read
+
+jobs:
+  launch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -q -r requirements.txt
+      - id: try
+        name: Launch attempt
+        env:
+          OCI_SETTINGS: ${{ secrets.OCI_SETTINGS }}
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
+        run: ./launch.sh
+      - name: Stop retrying once the VM exists
+        if: steps.try.outputs.created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow disable launch.yml --repo "$GITHUB_REPOSITORY"
