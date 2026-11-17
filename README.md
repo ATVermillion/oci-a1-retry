@@ -1,6 +1,6 @@
 # oci-a1-retry
 
-Tries every 15 minutes (GitHub Actions) to create an Oracle Cloud *Always Free*
+Tries every 5 minutes (in runs of about 5 hours, started every 4 hours) (GitHub Actions) to create an Oracle Cloud *Always Free*
 Arm VM (`VM.Standard.A1.Flex`, 2 OCPU / 12 GB) in Sydney, where capacity is scarce.
 Each run makes one launch call (`--no-retry`, so no rate limiting). When the VM
 exists, the workflow switches itself off.

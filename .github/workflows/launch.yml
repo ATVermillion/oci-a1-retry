@@ -2,7 +2,10 @@ name: Try to create Oracle A1 VM
 
 on:
   schedule:
-    - cron: "7,22,37,52 * * * *"   # every 15 minutes
+    # GitHub often skips frequent schedules, so each run keeps trying itself:
+    # one attempt every 5 minutes for about 5 hours. A new run starts every 4 hours
+    # (it waits if the previous one is still going).
+    - cron: "13 */4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +19,7 @@ permissions:
 jobs:
   launch:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -31,7 +34,13 @@ jobs:
           OCI_SETTINGS: ${{ secrets.OCI_SETTINGS }}
           OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
           OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: "True"
-        run: ./launch.sh
+        run: |
+          for i in $(seq 1 60); do
+            echo "Attempt $i at $(date -u +%H:%M)"
+            ./launch.sh
+            grep -q "created=true" "$GITHUB_OUTPUT" && break
+            [ "$i" -lt 60 ] && sleep 300
+          done
       - name: Stop retrying once the VM exists
         if: steps.try.outputs.created == 'true'
         env:
